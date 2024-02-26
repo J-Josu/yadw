@@ -1,0 +1,35 @@
+{
+    "compilerOptions": {
+        "module": "esnext",
+        "lib": [
+            "esnext"
+        ],
+        "target": "esnext",
+        "noEmit": true,
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "noEmitOnError": true,
+        "noErrorTruncation": true,
+        "allowSyntheticDefaultImports": true,
+        "verbatimModuleSyntax": true,
+        "types": [
+            "node"
+        ],
+        "strict": true,
+        "allowJs": true,
+        "checkJs": true,
+        "paths": {
+            "yadwjs": [
+                "./src/main/public.d.ts"
+            ],
+        },
+        "skipLibCheck": true,
+        "sourceMap": false
+    },
+    "include": [
+        "./src"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

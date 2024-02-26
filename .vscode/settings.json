@@ -1,0 +1,26 @@
+{
+    "[json]": {
+        "editor.tabSize": 2
+    },
+    "[markdown]": {
+        "editor.tabSize": 2,
+        "editor.wordWrap": "on"
+    },
+    "editor.tabSize": 4,
+    "editor.unicodeHighlight.ambiguousCharacters": true,
+    "editor.unicodeHighlight.invisibleCharacters": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "javascript.format.semicolons": "insert",
+    "javascript.preferences.importModuleSpecifierEnding": "js",
+    "javascript.preferences.quoteStyle": "single",
+    "search.exclude": {
+        "package-lock.json": true,
+        "pnpm-lock.yaml": true
+    },
+    "typescript.format.insertSpaceAfterCommaDelimiter": true,
+    "typescript.format.semicolons": "insert",
+    "typescript.preferences.importModuleSpecifierEnding": "js",
+    "typescript.preferences.quoteStyle": "single"
+}
