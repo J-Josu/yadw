@@ -1,3 +1,5 @@
+export * as f from './file.js';
+
 const argDateFormater = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
 function currentArgDateFormatted() {
     return argDateFormater.format(Date.now());
@@ -30,16 +32,6 @@ function logError(...args) {
     console['error'](`${currentArgDateFormatted()} [ERROR]`, ...args);
 }
 
-/** @param  {...any} args */
-function logFatal(...args) {
-    console['error'](`${currentArgDateFormatted()} [FATAL]`, ...args);
-}
-
-/** @param  {...any} args */
-function logCore(...args) {
-    console['log'](`${currentArgDateFormatted()} [CORE]`, ...args);
-}
-
 /**
  *
  * @param {number} level
@@ -53,8 +45,12 @@ export function createLogger(level, dev) {
         info: dev || level >= 3 ? logInfo : logNoop,
         warn: level >= 2 ? logWarn : logNoop,
         error: level >= 1 ? logError : logNoop,
-        fatal: logFatal,
-        core: logCore,
+        fatal: (...args) => {
+            console['error'](`${currentArgDateFormatted()} [FATAL]`, ...args);
+        },
+        core: (...args) => {
+            console['log'](`${currentArgDateFormatted()} [CORE]`, ...args);
+        }
     };
 }
 
@@ -64,7 +60,7 @@ export function createLogger(level, dev) {
  * @param {number} defaultValue
  * @returns {number}
  */
-export function numberFromEnv(env, defaultValue) {
+export function parseNumber(env, defaultValue) {
     if (!env) {
         return defaultValue;
     }
@@ -73,4 +69,49 @@ export function numberFromEnv(env, defaultValue) {
         return defaultValue;
     }
     return value;
+}
+
+export const log = createLogger(parseNumber(process.env.LOG_LEVEL, 2), process.env.RUNNING_ENVIROMENT === 'development');
+
+/**
+ *
+ * @param {number} ts
+ * @returns
+ */
+export function tsToRawHsMinS(ts) {
+    return ts < 1_000 ? '0s' :
+        ts < 60_000 ? `${Math.floor(ts / 1000)}s` :
+            ts < 3_600_000 ? `${Math.floor(ts / 60000)}m ${Math.floor((ts / 1000) % 60)}s` :
+                `${Math.floor(ts / 3600000)}h ${Math.floor((ts / 60000) % 60)}m ${Math.floor((ts / 1000) % 60)}s`;
+}
+
+/**
+ * @template {unknown[]} T
+ * @param {T[]} array
+ * @returns {T}
+ */
+export function pickRandom(array) {
+    return array[Math.floor(Math.random() * array.length)];
+}
+
+/**
+ * @param {`#${string}`} color
+ * @returns {number}
+ */
+export function hexColorToInt(color) {
+    return parseInt((color).slice(1), 16);
+}
+
+const argFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+});
+
+/**
+ * @param {Date | number | undefined} date
+ * @returns {string}
+ */
+export function dateAsArg(date) {
+    return argFormatter.format(date);
 }

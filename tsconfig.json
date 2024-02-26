@@ -10,8 +10,8 @@
         "resolveJsonModule": true,
         "noEmitOnError": true,
         "noErrorTruncation": true,
-        "allowSyntheticDefaultImports": true,
         "verbatimModuleSyntax": true,
+        "noImplicitAny": true,
         "types": [
             "node"
         ],
@@ -27,7 +27,7 @@
         "sourceMap": false
     },
     "include": [
-        "./src"
+        "./src/**/*"
     ],
     "exclude": [
         "node_modules"
