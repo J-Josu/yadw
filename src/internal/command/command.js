@@ -1,9 +1,10 @@
+import { SlashCommandBuilder } from 'discord.js';
 import { z } from 'zod';
-import { ExtendedClient } from '../client';
 import { INTERACTION } from '../config.js';
-import { dev, guildId } from '../environment.js';
+import { env } from '../environment.js';
 import { f, log } from '../utils/index.js';
-import { fsConfig } from './config';
+import { fsConfig } from './config.js';
+import { pathToFileURL } from 'url';
 
 const singleFileCommandSchema = z.object({
     default: z
@@ -83,8 +84,9 @@ const groupSetupSchema = z.object({
 /**
  *
  * @param {f.EntryDirectory | f.EntryFile} entry
- * @param {AccumulatedSetup} accumulatedSetup
+ * @param {AccumulatedSetup} [accumulatedSetup]
  */
+// eslint-disable-next-line no-unused-vars
 async function proccessReservedEntry(entry, accumulatedSetup) {
     // log.dev(`reserved entry not processed, entry:\n${JSON.stringify(entry, null, 2)}\n`);
 }
@@ -244,14 +246,30 @@ function reducePermissions(accumulated, news) {
 }
 
 
-class MultiFileCommand implements SlashCommandTrait {
-    name: string;
-    setupFile: f.EntryFile;
-    module: MultiFileCommandModule;
-    value: ReturnType<MultiFileCommandDefinition>;
-    #executionMap: Map<string, SubCommand>;
+/**
+ * @satisfies {import('./private.js').SlashCommandTrait}
+ */
+class MultiFileCommand {
+    /** @type {string} */
+    name;
+    /** @type {f.EntryFile} */
+    setupFile;
+    /** @type {import('./private.js').MultiFileCommandModule} */
+    module;
+    /** @type {ReturnType<import('./private.js').MultiFileCommandDefinition>} */
+    value;
+    /** @type {Map<string, SubCommand>} */
+    #executionMap;
 
-    constructor(name: string, setupFile: f.EntryFile, module: MultiFileCommandModule, subCommandsGroups: RawSubCommandGroup[], subCommands: RawSubCommand[], config?: GroupSetup) {
+    /**
+     * @param {string} name
+     * @param {f.EntryFile} setupFile
+     * @param {import('./private.js').MultiFileCommandModule} module
+     * @param {RawSubCommandGroup[]} subCommandsGroups
+     * @param {RawSubCommand[]} subCommands
+     * @param {GroupSetup} [config]
+     */
+    constructor(name, setupFile, module, subCommandsGroups, subCommands, config) {
         this.name = name;
         this.setupFile = setupFile;
         this.module = module;
@@ -286,10 +304,14 @@ class MultiFileCommand implements SlashCommandTrait {
         return this.value.data;
     }
 
-    async execute(arg: CommandCallbackArgs): Promise<unknown> {
+    /**
+     * @param {import('./private.js').CommandCallbackArgs} arg
+     * @returns {Promise<unknown>}
+     */
+    async execute(arg) {
         const groupName = arg.interaction.options.getSubcommandGroup();
         const subCommandName = arg.interaction.options.getSubcommand();
-        const subCommand = this.#executionMap.get(groupName ? `${groupName}.${subCommandName}` : subCommandName)!;
+        const subCommand = /** @type {SubCommand} */(this.#executionMap.get(groupName ? `${groupName}.${subCommandName}` : subCommandName));
 
         if (!this.value.execute) {
             return subCommand.execute(arg);
@@ -303,18 +325,25 @@ class MultiFileCommand implements SlashCommandTrait {
     }
 }
 
-async function proccesMultiFileCommand(directory: f.EntryDirectory, accumulatedSetup: GroupSetup): Promise<MultiFileCommand | undefined> {
+/**
+ * @param {f.EntryDirectory} directory
+ * @param {GroupSetup} accumulatedSetup
+ * @returns {Promise<MultiFileCommand | undefined>}
+ */
+async function proccesMultiFileCommand(directory, accumulatedSetup) {
     const setupEntry = directory.extract(fsConfig.commandSetup.re, fsConfig.commandSetup.type);
     if (!setupEntry) return undefined;
 
-    const setupModule = await f.importModule < MultiFileCommandModule > (setupEntry.absolutePath, multiFileCommandSchema);
+    const setupModule = /** @type {f.ImportReturnType<import('./private.js').MultiFileCommandModule>}*/(await f.importModule(setupEntry.absolutePath, multiFileCommandSchema));
     if (!setupModule.success) {
         log.warn(`import error: ${setupModule.error}\n  path > ${setupEntry.absolutePath}\n  exception? > ${setupModule.exception?.cause ?? setupModule.exception?.stack}`);
         return undefined;
     }
 
-    const subCommandsGroups: RawSubCommandGroup[] = [];
-    const subCommands: RawSubCommand[] = [];
+    /** @type {RawSubCommandGroup[]} */
+    const subCommandsGroups = [];
+    /** @type {RawSubCommand[]} */
+    const subCommands = [];
     for (const entry of directory.entries) {
         if (fsConfig.skiped.re.test(entry.name)) {
             continue;
@@ -331,13 +360,13 @@ async function proccesMultiFileCommand(directory: f.EntryDirectory, accumulatedS
             subCommandsGroups.push(result);
         }
 
-        const subCommandModule = await f.importModule < GenericSubCommandModule > (entry.absolutePath, subCommandSchema);
+        const subCommandModule = /** @type {f.ImportReturnType<import('./private.js').GenericSubCommandModule>}*/(await f.importModule(entry.absolutePath, subCommandSchema));
         if (!subCommandModule.success) {
             log.warn(`import error: ${subCommandModule.error}\n  path > ${entry.absolutePath}\n  exception? > ${subCommandModule.exception?.cause ?? subCommandModule.exception?.stack}`);
             continue;
         }
 
-        subCommands.push({ file: entry as f.EntryFile, module: subCommandModule.module });
+        subCommands.push({ file: /** @type {f.EntryFile} */(entry), module: subCommandModule.module });
     }
 
     if (subCommandsGroups.length === 0 && subCommands.length === 0) {
@@ -349,15 +378,29 @@ async function proccesMultiFileCommand(directory: f.EntryDirectory, accumulatedS
     return new MultiFileCommand(name, setupEntry, setupModule.module, subCommandsGroups, subCommands, accumulatedSetup);
 }
 
+/**
+ * @satisfies {import('./private.js').SlashCommandTrait}
+ */
+class SingleFileCommand {
+    /** @type {string} */
+    name;
+    /** @type {f.EntryFile} */
+    file;
+    /** @type {import('./private.js').SingleFileCommandModule}*/
+    module;
+    /** @type {ReturnType<import('./private.js').SingleFileCommandDefinition>} */
+    value;
+    /** @type {ReturnType<import('./private.js').SingleFileCommandDefinition>['execute']} */
+    execute;
 
-class SingleFileCommand implements SlashCommandTrait {
-    name: string;
-    file: f.EntryFile;
-    module: SingleFileCommandModule;
-    value: ReturnType<SingleFileCommandDefinition>;
-    execute: ReturnType<SingleFileCommandDefinition>['execute'];
-
-    constructor(name: string, file: f.EntryFile, module: SingleFileCommandModule, config?: GroupSetup, args?: unknown[]) {
+    /**
+     * @param {string} name
+     * @param {f.EntryFile} file
+     * @param {import('./private.js').SingleFileCommandModule} module
+     * @param {GroupSetup} [config]
+     * @param {unknown[]} [args]
+     */
+    constructor(name, file, module, config, args) {
         this.name = name;
         this.file = file;
         this.module = module;
@@ -381,17 +424,33 @@ class SingleFileCommand implements SlashCommandTrait {
     }
 }
 
-type Command = SingleFileCommand | MultiFileCommand;
+/**
+ * @typedef {SingleFileCommand | MultiFileCommand} Command
+ */
 
 export class Group {
-    name: string;
-    file?: f.EntryFile;
-    module?: GroupSetupModule;
-    value: GroupSetupDefinition;
-    innerGroups: Group[];
-    commands: Command[];
+    /** @type {string} */
+    name;
+    /** @type {f.EntryFile | undefined} */
+    file;
+    /** @type {import('./private.js').GroupSetupModule | undefined} */
+    module;
+    /** @type {import('./private.js').GroupSetupDefinition} */
+    value;
+    /** @type {Group[]} */
+    innerGroups;
+    /** @type {Command[]} */
+    commands;
 
-    constructor(name: string, file: f.EntryFile | undefined, module: GroupSetupModule | undefined, value: GroupSetupDefinition, innerGroups: Group[], commands: Command[]) {
+    /**
+     * @param {string} name
+     * @param {f.EntryFile | undefined} file
+     * @param {import('./private.js').GroupSetupModule | undefined} module
+     * @param {import('./private.js').GroupSetupDefinition} value
+     * @param {Group[]} innerGroups
+     * @param {Command[]} commands
+     */
+    constructor(name, file, module, value, innerGroups, commands) {
         this.name = name;
         this.file = file;
         this.module = module;
@@ -411,19 +470,30 @@ export class Group {
     }
 }
 
+/**
+ * @satisfies {GroupSetup}
+ */
 const defaultGroupSetup = {
     categories: new Set(),
     permission: 0n
-} as const satisfies GroupSetup;
+};
 
-async function processDirectoryGroup(directory: f.EntryDirectory, accumulatedSetup: AccumulatedSetup) {
+/**
+ * @param {f.EntryDirectory} directory
+ * @param {AccumulatedSetup} accumulatedSetup
+ * @returns {Promise<Group | undefined>}
+ */
+async function processDirectoryGroup(directory, accumulatedSetup) {
     const setupEntry = directory.extract(fsConfig.groupSetup.re, fsConfig.groupSetup.type);
 
-    let setupModule: GroupSetupDefinition = defaultGroupSetup;
-    let actualSetup: AccumulatedSetup & Pick<GroupSetupDefinition, "description"> = accumulatedSetup;
+    /** @type {import('./private.js').GroupSetupDefinition} */
+    let setupModule = defaultGroupSetup;
+    /** @type {AccumulatedSetup & Pick<import('./private.js').GroupSetupDefinition, 'description'>} */
+    let actualSetup = accumulatedSetup;
 
     if (setupEntry) {
-        const setup = await f.importModule < GroupSetupModule > (setupEntry.absolutePath, groupSetupSchema);
+        const setup = /** @type {f.ImportReturnType<import('./private.js').GroupSetupModule>} */
+            (await f.importModule(setupEntry.absolutePath, groupSetupSchema));
         if (setup.success) {
             setupModule = setup.module.config;
             actualSetup = {
@@ -434,8 +504,10 @@ async function processDirectoryGroup(directory: f.EntryDirectory, accumulatedSet
         }
     }
 
-    const innerGroups: Group[] = [];
-    const commands: Command[] = [];
+    /** @type {Group[]} */
+    const innerGroups = [];
+    /** @type {Command[]} */
+    const commands = [];
     for (const entry of directory.entries) {
         if (fsConfig.skiped.re.test(entry.name)) {
             continue;
@@ -462,7 +534,8 @@ async function processDirectoryGroup(directory: f.EntryDirectory, accumulatedSet
             continue;
         }
 
-        const commandModule = await f.importModule < SingleFileCommandModule > (entry.absolutePath, singleFileCommandSchema);
+        const commandModule = /** @type {f.ImportReturnType<import('./private.js').SingleFileCommandModule>} */
+            (await f.importModule(entry.absolutePath, singleFileCommandSchema));
         if (!commandModule.success) {
             log.warn(`import error: ${commandModule.error}\n  path > ${entry.absolutePath}\n  exception? > ${commandModule.exception?.cause ?? commandModule.exception?.stack}`);
             continue;
@@ -478,16 +551,21 @@ async function processDirectoryGroup(directory: f.EntryDirectory, accumulatedSet
     }
 
     const name = directory.name.slice(1, directory.name.length - 1);
-    return new Group(name, setupEntry, setupModule as any, actualSetup, innerGroups, commands);
-};
+    return new Group(name, setupEntry, /** @type {any} */(setupModule), actualSetup, innerGroups, commands);
+}
 
-
-async function loadGroupSetup(directory: f.EntryDirectory, previus?: AccumulatedSetup) {
+/**
+ * @param {f.EntryDirectory} directory
+ * @param {AccumulatedSetup} [previus]
+ * @returns {Promise<{ setup: AccumulatedSetup, setupEntry?: f.EntryFile, setupModule?: import('./private.js').GroupSetupModule }>}
+ */
+async function loadGroupSetup(directory, previus) {
     const setup = { ...(previus ?? defaultGroupSetup) };
     const setupEntry = directory.extract(fsConfig.groupSetup.re, fsConfig.groupSetup.type);
     if (!setupEntry) return { setup };
 
-    const result = await f.importModule < GroupSetupModule > (setupEntry.absolutePath, groupSetupSchema);
+    const result = /** @type {f.ImportReturnType<import('./private.js').GroupSetupModule>} */
+        (await f.importModule(setupEntry.absolutePath, groupSetupSchema));
     if (!result.success) return { setup };
 
     const module = result.module;
@@ -501,12 +579,18 @@ async function loadGroupSetup(directory: f.EntryDirectory, previus?: Accumulated
     return { setup, setupEntry, setupModule: module };
 }
 
-async function processCommandsDirectory(baseDir: f.EntryDirectory) {
+/**
+ * @param {f.EntryDirectory} baseDir
+ * @returns {Promise<{ commandsDirectory: f.EntryDirectory, result: Group, flattenedCommands: Command[] } | undefined>}
+ */
+async function processCommandsDirectory(baseDir) {
     const baseDirCopy = baseDir.copy();
     const { setup, setupEntry, setupModule } = await loadGroupSetup(baseDirCopy);
 
-    const innerGroups: Group[] = [];
-    const commands: Command[] = [];
+    /** @type {Group[]} */
+    const innerGroups = [];
+    /** @type {Command[]} */
+    const commands = [];
     for (const entry of baseDirCopy.entries) {
         if (fsConfig.skiped.re.test(entry.name))
             continue;
@@ -532,7 +616,8 @@ async function processCommandsDirectory(baseDir: f.EntryDirectory) {
             continue;
         }
 
-        const commandModule = await f.importModule < SingleFileCommandModule > (entry.absolutePath, singleFileCommandSchema);
+        const commandModule = /** @type {f.ImportReturnType<import('./private.js').SingleFileCommandModule>} */
+            (await f.importModule(entry.absolutePath, singleFileCommandSchema));
         if (!commandModule.success) {
             log.warn(`import error: ${commandModule.error}\n  path > ${entry.absolutePath}\n  exception? > ${commandModule.exception?.cause ?? commandModule.exception?.stack}`);
             continue;
@@ -547,7 +632,7 @@ async function processCommandsDirectory(baseDir: f.EntryDirectory) {
         return undefined;
     }
 
-    const resultGroup = new Group("root", setupEntry, setupModule!, setup, innerGroups, commands);
+    const resultGroup = new Group("root", setupEntry, setupModule, setup, innerGroups, commands);
 
     return {
         commandsDirectory: baseDir,
@@ -557,10 +642,15 @@ async function processCommandsDirectory(baseDir: f.EntryDirectory) {
 }
 
 
-async function loadHelpCommand(commands: Group): Promise<SingleFileCommand> {
-    const fileEntry = f.fileEntry(
+/**
+ * @param {Group} commands
+ * @returns {Promise<SingleFileCommand>}
+ */
+async function loadHelpCommand(commands) {
+    const fileEntry = pathToFileURL(INTERACTION.COMMANDS.PATH, (env.dev ? '+help.ts' : '+help.js'));
+    f.fileEntry(
         f.posixJoin(
-            ...f.splitEntrys(__dirname), '..', '..', INTERACTION.COMMANDS.path, (dev ? '+help.ts' : '+help.js')
+            INTERACTION.COMMANDS.PATH, (env.dev ? '+help.ts' : '+help.js')
         )
     );
     if (!fileEntry) {
@@ -569,7 +659,8 @@ async function loadHelpCommand(commands: Group): Promise<SingleFileCommand> {
 
     fileEntry.parent = commands.file?.parent;
 
-    const module = await f.importModule < SingleFileCommandModule > (fileEntry.absolutePath, singleFileCommandSchema);
+    const module = /** @type {f.ImportReturnType<import('./private.js').SingleFileCommandModule>} */
+        (await f.importModule(fileEntry.absolutePath, singleFileCommandSchema));
     if (!module.success) {
         throw new Error(`failed to load help command\n${module.error}`);
     }
@@ -582,9 +673,7 @@ async function loadHelpCommand(commands: Group): Promise<SingleFileCommand> {
 
 
 async function loadCommands() {
-    const COMMANDS_ABS_DIR = f.posixJoin(
-        ...f.splitEntrys(__dirname), '..', '..', INTERACTION.COMMANDS.path
-    );
+    const COMMANDS_ABS_DIR = INTERACTION.COMMANDS.PATH;
     const commandsDir = f.deepScan({
         absolutePath: COMMANDS_ABS_DIR,
         fileNamePattern: fsConfig.ignored.file.reNegated,
@@ -599,13 +688,17 @@ async function loadCommands() {
         return undefined;
     }
 
-    const helpCommand = await loadHelpCommand(commands.result);
-    commands.flattenedCommands.unshift(helpCommand);
+    // const helpCommand = await loadHelpCommand(commands.result);
+    // commands.flattenedCommands.unshift(helpCommand);
 
     return commands;
 }
 
-export async function registerCommands(client: ExtendedClient): Promise<void> {
+/**
+ * @param {import('../client.js').Client} client
+ * @returns {Promise<void>}
+ */
+export async function registerCommands(client) {
     const loadedCommands = await loadCommands();
 
     if (!loadedCommands) {
@@ -613,8 +706,10 @@ export async function registerCommands(client: ExtendedClient): Promise<void> {
         return;
     }
 
-    const commandsData: ApplicationCommandDataResolvable[] = [];
-    const commandsNames: string[] = [];
+    /** @type {import('discord.js').ApplicationCommandDataResolvable[]} */
+    const commandsData = [];
+    /** @type {string[]} */
+    const commandsNames = [];
 
     for (const command of loadedCommands.flattenedCommands) {
         commandsData.push(command.data);
@@ -623,8 +718,8 @@ export async function registerCommands(client: ExtendedClient): Promise<void> {
     }
 
     client.on('ready', async () => {
-        if (guildId) {
-            await client.guilds.cache.get(guildId)?.commands.set(commandsData);
+        if (env.guildId) {
+            await client.guilds.cache.get(env.guildId)?.commands.set(commandsData);
         }
         else {
             await client.application?.commands.set(commandsData);

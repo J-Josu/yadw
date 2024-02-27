@@ -1,10 +1,10 @@
-import { Client, ClientEvents } from 'discord.js';
-import { ExtendedClient } from '../client';
+import type { ClientEvents } from 'discord.js';
+import type { Client } from '../client.js';
 
 
 export type EventNames = keyof ClientEvents;
 
-export type EventCallback<N extends EventNames, C extends Client = ExtendedClient> = (client: C, ...args: ClientEvents[N]) => void;
+export type EventCallback<N extends EventNames, C extends Client = Client> = (client: C, ...args: ClientEvents[N]) => void;
 
 export type EventTrait<N extends EventNames> = {
     readonly once: boolean;

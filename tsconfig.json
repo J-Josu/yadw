@@ -19,7 +19,7 @@
         "allowJs": true,
         "checkJs": true,
         "paths": {
-            "yadwjs": [
+            "yadw": [
                 "./src/main/public.d.ts"
             ],
         },

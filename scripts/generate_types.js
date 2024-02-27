@@ -10,6 +10,6 @@ fs.writeFileSync(`${dir}/index.d.ts`, "import './types/index.js';\n");
 await createBundle({
     output: `${dir}/types/index.d.ts`,
     modules: {
-        [pkg.name]: `${dir}/src/public.d.ts`,
+        [pkg.name]: `${dir}/src/main/public.d.ts`,
     }
 });

@@ -1,6 +1,4 @@
-import { EntryConfigDefinition } from '../sharedType';
-
-
+/** @satisfies {Record<string, import('../private.js').EntryConfigDefinition>} */
 export const fsConfig = {
     ignored: {
         dir: {
@@ -68,4 +66,4 @@ export const fsConfig = {
         literalName: undefined,
         re: /^\+.+$/
     }
-} as const satisfies Record<string, EntryConfigDefinition>;
+};

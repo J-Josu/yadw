@@ -102,7 +102,7 @@ export function writeJSON(absPath, value) {
 /**
  * @typedef {{
  *  name: string;
- *  absolutePath: string;
+ *  absolutePath: URL;
  *  parent?:EntryDirectory}} EntryData
  */
 
@@ -126,6 +126,10 @@ export const entryType = {
  */
 
 /**
+ * @interface EntryData
+ */
+
+/**
  * @typedef {EntryData & {
  * module?: {};
  * }} FileData
@@ -133,7 +137,7 @@ export const entryType = {
 
 
 /**
- * @implements {FileData}
+ * @satisfies {FileData}
  */
 export class EntryFile {
     /** @readonly */
@@ -144,15 +148,13 @@ export class EntryFile {
      */
     name;
     /**
-     * @type {string}
+     * @type {URL}
      * @readonly
      */
     absolutePath;
     /**
      * @type {EntryDirectory | undefined}
-     * @readonly
      */
-    // @ts-ignore
     parent;
     /** @type {{} | undefined} */
     module;
@@ -175,7 +177,7 @@ export class EntryFile {
  */
 
 /**
- * @implements {DirectoryData}
+ * @satisfies {DirectoryData}
  */
 export class EntryDirectory {
     /** @readonly */
@@ -186,7 +188,7 @@ export class EntryDirectory {
      * */
     name;
     /**
-     * @type {string}
+     * @type {URL}
      * @readonly
      * */
     absolutePath;
@@ -312,7 +314,7 @@ function isNodeJSError(error) {
 
 
 /**
- * @param {string} absPath
+ * @param {URL} absPath
  * @returns {EntryFile | undefined}
  */
 export function fileEntry(absPath) {
@@ -345,7 +347,7 @@ export function fileEntry(absPath) {
     }
 
     return new EntryFile({
-        name: path.basename(absPath),
+        name: path.basename(absPath.href),
         absolutePath: absPath
     });
 }
@@ -366,16 +368,16 @@ export function fileEntry(absPath) {
 
 /**
  * @typedef {{
- * absolutePath: string;
+ * absolutePath: URL;
  * components?: undefined;
- * }} PathByComponents
+ * }} PathByAbsolutePath
  */
 
 /**
  * @typedef {{
  * absolutePath?: undefined;
  * components: string[];
- * }} PathByAbsolutePath
+ * }} PathByComponents
  */
 
 /**
@@ -422,7 +424,7 @@ function _deepScan({ parentDir, absolutePath, fileNamePattern, dirNamePattern })
     for (const entry of entrys) {
         const newEntry = {
             name: entry.name,
-            absolutePath: posixJoin(absolutePath, entry.name),
+            absolutePath: posixJoin(absolutePath.href, entry.name),
             parent: parentDir
         };
         if (entry.isFile()) {
@@ -431,7 +433,7 @@ function _deepScan({ parentDir, absolutePath, fileNamePattern, dirNamePattern })
         }
         if (!entry.isDirectory()) continue;
 
-        const innerScan = _deepScan({ absolutePath: newEntry.absolutePath, fileNamePattern, dirNamePattern });
+        const innerScan = _deepScan({ absolutePath: new URL(newEntry.absolutePath), fileNamePattern, dirNamePattern });
         if (!innerScan) continue;
 
         dirEntries.push(new EntryDirectory({
@@ -452,9 +454,9 @@ export function deepScan({ parentDir, absolutePath, components, fileNamePattern,
         return undefined;
     }
 
-    const scanPath = absolutePath ?? components.join(path.posix.sep);
-    const baseName = scanPath.split(path.posix.sep).at(-1) || '';
-    const innerScan = _deepScan({ absolutePath: scanPath, fileNamePattern, dirNamePattern });
+    const scanPath = absolutePath ?? new URL(components.join(path.posix.sep));
+    const baseName = scanPath.pathname.split('/').pop() ?? '';
+    const innerScan = _deepScan({ absolutePath: new URL(scanPath), fileNamePattern, dirNamePattern });
 
     return new EntryDirectory({
         name: baseName,
@@ -619,7 +621,7 @@ export function deepList({ type = 'any', absolutePath, components, fileNamePatte
         for (const entry of entrys) {
             if (!entry.isDirectory()) continue;
 
-            const innerScan = deepList({ type, components: [scanPath, entry.name], fileNamePattern, dirNamePattern });
+            const innerScan = deepList({ type, components: [scanPath.toString(), entry.name], fileNamePattern, dirNamePattern });
             if (!innerScan) continue;
 
             deeperEntrys.push(...innerScan.map(pathTail => path.posix.join(entry.name, pathTail)));

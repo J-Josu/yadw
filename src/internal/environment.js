@@ -1,31 +1,34 @@
-export const dev = process.env.RUNNING_ENVIROMENT === "development";
+// import { join } from 'path';
+// import { pathToFileURL } from 'url';
 
-
+const dev = process.env.RUNNING_ENVIROMENT === "development";
+// console.log(pathToFileURL(join(process.cwd() + '/src/commands')))
+console.log(process.env);
 if (!process.env.BOT_TOKEN) {
     throw new Error("Required environment variable BOT_TOKEN is not set");
 }
-export const botToken = process.env.BOT_TOKEN;
+const botToken = process.env.BOT_TOKEN;
 
 if (!process.env.APPLICATION_ID) {
     throw new Error("Required environment variable APPLICATION_ID is not set");
 }
-export const applicationId = process.env.APPLICATION_ID;
+const applicationId = process.env.APPLICATION_ID;
 
 if (!process.env.BOT_OWNER_ID) {
     console["warn"]("[WARN] Enviroment variable BOT_OWNER_ID is not set, could cause side effects");
 }
-export const botOwnerId = process.env.BOT_OWNER_ID;
+const botOwnerId = process.env.BOT_OWNER_ID;
 
 
 if (!process.env.GUILD_ID) {
     throw new Error("Required environment variable GUILD_ID is not set");
 }
-export const guildId = process.env.GUILD_ID;
+const guildId = process.env.GUILD_ID;
 
 if (!process.env.GUILD_INVITE_CODE) {
     console["warn"]("[WARN] Enviroment variable GUILD_INVITE is not set, could cause side effects");
 }
-export const guildInviteCode = process.env.GUILD_INVITE_CODE;
+const guildInviteCode = process.env.GUILD_INVITE_CODE;
 
 
 let _logLevel = 2;
@@ -39,15 +42,18 @@ else {
         _logLevel = 2;
     }
 }
-export const logLevel = _logLevel;
+const logLevel = _logLevel;
 
 
-export default {
+const cwd = process.cwd();
+
+export const env = {
     dev,
     botToken,
     applicationId,
     botOwnerId,
     guildId,
     guildInviteCode,
-    logLevel
+    logLevel,
+    cwd
 };

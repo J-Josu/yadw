@@ -5,11 +5,12 @@ import { defineConfig } from 'rollup';
 
 // The lib code must be compiled in CommonJS format to support any Node.js environment
 export default defineConfig({
-	input: 'src/index.js',
-	output: {
-		file: 'dist/index.cjs',
-		format: 'umd',
-		name: 'yadwjs'
-	},
-	plugins: [resolve(), commonjs(), terser()]
+    input: 'src/main/index.js',
+    output: {
+        file: 'dist/index.cjs',
+        format: 'umd',
+        name: 'yadwjs'
+    },
+    plugins: [resolve(), commonjs(), terser()],
+    external: [/node_modules/],
 });

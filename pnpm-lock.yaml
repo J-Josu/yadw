@@ -35,6 +35,9 @@ devDependencies:
   eslint-plugin-import:
     specifier: ^2.29.1
     version: 2.29.1(@typescript-eslint/parser@7.1.0)(eslint@8.57.0)
+  eslint-plugin-lube:
+    specifier: ^0.4.3
+    version: 0.4.3
   rollup:
     specifier: ^4.12.0
     version: 4.12.0
@@ -1093,6 +1096,10 @@ packages:
       - eslint-import-resolver-typescript
       - eslint-import-resolver-webpack
       - supports-color
+    dev: true
+
+  /eslint-plugin-lube@0.4.3:
+    resolution: {integrity: sha512-BVO83tRo090d6a04cl45Gb761SD79cOT6wKxxWrpsH7Rv8I0SJvc79ijE11vvyxxCMiGUVq/w4NqqPJAHyYfSQ==}
     dev: true
 
   /eslint-scope@7.2.2:

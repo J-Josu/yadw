@@ -1,25 +1,25 @@
 import type { APIEmbed, ChatInputCommandInteraction, InteractionReplyOptions, LocaleString, PermissionFlags, SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, SlashCommandSubcommandBuilder, SlashCommandSubcommandGroupBuilder, SlashCommandSubcommandsOnlyBuilder } from 'discord.js';
 
-import { AnyTuple, Replace, Values } from '../../lib/utilType';
-import { ExtendedClient } from '../client';
+import type { AnyTuple, Replace, Values } from '../utils/private.js';
+import type { Client } from '../client.js';
 
 
-export const MemberType = {
+export type MemberType = {
     Owner: 'Owner',
     Admin: 'Administrator',
     Mod: 'Moderator',
     Normal: 'Normal',
     Visitor: 'Visitor',
-} as const;
+};
 
-export type MemberTypeValues = Values<typeof MemberType>;
+export type MemberTypeValues = Values<MemberType>;
 
 export type Locals = {
     MemberType: MemberTypeValues;
 };
 
 export type CommandCallbackArgs = {
-    client: ExtendedClient;
+    client: Client;
     interaction: ChatInputCommandInteraction<'cached'>;
     locals: Locals;
 };
@@ -87,11 +87,11 @@ export type GroupSetupModule = { config: GroupSetupDefinition; };
 export type InteractionReply = Replace<InteractionReplyOptions, 'embeds', AnyTuple<APIEmbed>>;
 
 
-export const groupTypes = {
+export type GroupTypes = {
     CATEGORY: `CATEGORY`,
     SHADOW: `SHADOW`,
     COMPLETE: `CATEGORY_SHADOW`
-} as const;
+};
 
 export type CategoryGroupDefinition = {
     type: `CATEGORY`;

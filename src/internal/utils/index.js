@@ -71,7 +71,7 @@ export function parseNumber(env, defaultValue) {
     return value;
 }
 
-export const log = createLogger(parseNumber(process.env.LOG_LEVEL, 2), process.env.RUNNING_ENVIROMENT === 'development');
+export const log = createLogger(parseNumber(process.env.LOG_LEVEL, 6),true);
 
 /**
  *

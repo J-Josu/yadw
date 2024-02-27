@@ -1,6 +1,6 @@
 import { z } from 'zod';
+import { f } from '../utils/index.js';
 import { INTERACTION } from '../config.js';
-import { validatedImport } from '../file.js';
 
 
 const eventSchema = z.object({
@@ -18,6 +18,33 @@ const eventSchema = z.object({
         }))
 });
 
+
+// /**
+//  * @template {import('./public.js').EventNames} N
+//  */
+// class Event {
+//     /** @type {N} */
+//     name;
+//     /** @type {boolean} */
+//     once;
+//     /** @type {string} */
+//     description;
+//     /** @type {import('./public.js').EventCallback<N>} */
+//     response;
+
+//     /**
+//      * @param {N} eventName
+//      * @param {boolean} once
+//      * @param {string} description
+//      * @param {import('./public.js').EventCallback<N, import('../client').ExtendedClient>} responseFn
+//      */
+//     constructor(eventName, once, description, responseFn) {
+//         this.name = eventName;
+//         this.once = once;
+//         this.description = description;
+//         this.response = responseFn;
+//     }
+// }
 
 /**
  * @param {import('../client').Client} client
@@ -39,13 +66,13 @@ export async function registerEvents(client) {
     }
 
     for (const eventName of eventsToLoad) {
-        console.log('eventName', EVENTS_ABS_DIR);
-        const EVENT_ABS_PATH = new URL(eventName, EVENTS_ABS_DIR + '/');
+        console.log('eventName',EVENTS_ABS_DIR);
+        const EVENT_ABS_PATH = new URL(eventName, EVENTS_ABS_DIR+'/');
 
-        const importResult = await validatedImport(EVENT_ABS_PATH, eventSchema);
+        const importResult = await f.importModuleWithZod(EVENT_ABS_PATH, eventSchema);
         if (!importResult.success) {
             console.error(`import error: ${importResult.error}\n  path > ${EVENT_ABS_PATH}\n  exception?.name > ${importResult.exception?.name}`);
-            console.log(importResult.exception);
+            console.log(importResult.exception)
             // log.warn(`import error: ${importResult.error}\n  path > ${EVENT_ABS_PATH}\n  exception?.name > ${importResult.exception?.name}`);
             // log.warn(`Event declared at path '${EVENT_ABS_PATH}' has problems, not loaded`);
             continue;

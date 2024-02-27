@@ -16,6 +16,8 @@ const config = {
         'sourceType': 'module'
     },
 
+    plugins: ['lube'],
+
     rules: {
         // 'no-console': 'error',
         // eslint isn't that well-versed with JSDoc to know that `foo: /** @type{..} */ (foo)` isn't a violation of this rule, so turn it off
@@ -23,7 +25,8 @@ const config = {
         'no-var': 'error',
         '@typescript-eslint/no-explicit-any': 'off',
         "import/extensions": ["error", "ignorePackages"],
-        'import/no-unresolved': 'error'
+        'import/no-unresolved': 'error',
+		'lube/svelte-naming-convention': ['off', { fixSameNames: true }],
     },
 
     settings: {}

@@ -1,39 +1,122 @@
-declare module 'yadwjs' {
-	export type LogFunction = (...args: any[]) => void;
-
-	export type Logger = {
-		/**
-		 * Logs only in development mode
-		 */
-		dev: LogFunction,
-		/**
-		 * Logs in development mode or when log level is 4 or higher
-		 */
-		debug: LogFunction,
-		/**
-		 * Logs in development mode or when log level is 3 or higher
-		 */
-		info: LogFunction,
-		/**
-		 * Logs when log level is 2 or higher
-		 */
-		warn: LogFunction,
-		/**
-		 * Logs when log level is 1 or higher
-		 */
-		error: LogFunction,
-		/**
-		 * Logs always
-		 */
-		fatal: LogFunction,
-		/**
-		 * Logs always
-		 */
-		core: LogFunction,
+declare module 'yadw' {
+	import type { APIEmbed, ChatInputCommandInteraction, InteractionReplyOptions, LocaleString, PermissionFlags, SlashCommandBuilder, SlashCommandOptionsOnlyBuilder, SlashCommandSubcommandBuilder, SlashCommandSubcommandGroupBuilder, SlashCommandSubcommandsOnlyBuilder, Client as Client_1, ClientEvents, Collection } from 'discord.js';
+	type MemberType = {
+		Owner: 'Owner',
+		Admin: 'Administrator',
+		Mod: 'Moderator',
+		Normal: 'Normal',
+		Visitor: 'Visitor',
 	};
-	export function createLogger(level: number, dev: boolean): Logger;
 
-	export function numberFromEnv(env: string | undefined, defaultValue: number): number;
+	type MemberTypeValues = Values<MemberType>;
+
+	type Locals = {
+		MemberType: MemberTypeValues;
+	};
+
+	type CommandCallbackArgs = {
+		client: Client;
+		interaction: ChatInputCommandInteraction<'cached'>;
+		locals: Locals;
+	};
+
+
+	type SlashCommandBuilderReturns = SlashCommandBuilder | Omit<SlashCommandBuilder, "addSubcommand" | "addSubcommandGroup"> | SlashCommandSubcommandsOnlyBuilder | SlashCommandOptionsOnlyBuilder;
+
+
+	export type SlashCommandTrait = {
+		readonly data: SlashCommandBuilderReturns,
+		execute(arg: CommandCallbackArgs): Promise<unknown>;
+	};
+
+
+	type CommandPermissions = Values<PermissionFlags>[];
+
+
+	export type SingleFileCommandDefinition<P extends readonly unknown[] = unknown[]> = (...args: P) => {
+		readonly data: SlashCommandBuilderReturns;
+		readonly permissions?: CommandPermissions;
+		execute(arg: CommandCallbackArgs): Promise<unknown>;
+	};
+
+
+	export type MultiFileCommandDefinition<P extends readonly unknown[] = unknown[]> = (...args: P) => {
+		readonly data: SlashCommandBuilder;
+		readonly permissions?: CommandPermissions;
+		execute?(arg: CommandCallbackArgs): Promise<unknown>;
+		readonly subCommandsArgs?: AnyTuple;
+	};
+
+
+	export type SubCommandGroupDefinition = () => {
+		readonly data: SlashCommandSubcommandGroupBuilder;
+	};
+
+
+	export type BaseSubCommandDefinition<P extends readonly unknown[] = unknown[]> = (...args: P) => {
+		readonly data: SlashCommandSubcommandBuilder;
+		execute(arg: CommandCallbackArgs): Promise<unknown>;
+	};
+
+	export type SubCommandDefinitionFrom<T extends MultiFileCommandDefinition, A = ReturnType<T>['subCommandsArgs']> = BaseSubCommandDefinition<A extends AnyTuple ? A : []>;
+
+
+	export type GroupSetupDefinition = {
+		readonly permissions?: CommandPermissions;
+		readonly categories?: Set<string>;
+		readonly description?: Partial<Record<LocaleString, string>> & { "en-US": string; };
+	};
+
+
+	export type InteractionReply = Replace<InteractionReplyOptions, 'embeds', AnyTuple<APIEmbed>>;
+	type EventNames = keyof ClientEvents;
+
+	type EventCallback<N extends EventNames, C extends Client_1 = ExtendedClient> = (client: C, ...args: ClientEvents[N]) => void;
+
+	type EventTrait<N extends EventNames> = {
+		readonly once: boolean;
+		readonly name: N;
+		readonly description: string;
+		readonly response: EventCallback<N>;
+	};
+
+	export type EventDefinition<N extends EventNames, A extends unknown[] = []> = (...args: A) => EventTrait<N>;
+	type Values<T> = T[keyof T];
+
+	type Replace<T extends object, K extends keyof T, V> = Omit<T, K> & Record<K, V>;
+
+	type AnyTuple<T = unknown> = [] | [T, ...T[]];
+	class Client extends Client_1<boolean> {
+		constructor();
+		
+		commands: Collection<string, SlashCommandTrait>;
+		
+		programedTasks: Map<string, RegisteredTask>;
+		
+		scheduledTasks: Map<string, RegisteredTask>;
+		selectMenus: Collection<any, any>;
+		start(): Promise<void>;
+		
+		programTask<C extends (...args: A) => void, A extends unknown[]>({ name, callback, ms, args, initialize }: ProgramTaskData<C, A>): void;
+		
+		removeProgramedTask(name: string): void;
+		
+		scheduleTask<C_1 extends (...args: A_1) => void, A_1 extends unknown[]>({ name, callback, interval, args, initialize }: ScheduleTaskData<C_1, A_1>): void;
+		
+		removeScheduledTask(name: string): void;
+	}
+	type RegisteredTask = { callback: (...args: any) => void; id: number | NodeJS.Timeout; };
+
+	type TaskData<C extends (...args: A) => void, A extends unknown[]> = {
+		name: string,
+		callback: C,
+		args: A;
+		initialize?: boolean;
+	};
+
+	type ProgramTaskData<C extends (...args: A) => void, A extends unknown[]> = TaskData<C, A> & { ms: number; };
+
+	type ScheduleTaskData<C extends (...args: A) => void, A extends unknown[]> = TaskData<C, A> & { interval: number; };
 }
 
 //# sourceMappingURL=index.d.ts.map
